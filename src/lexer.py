@@ -6,7 +6,7 @@ def Lex(tokenizedData):
         newData = data.copy()
         # Showing what each line includes
         newData["includes"] = {};
-        if(re.match(r"(.*?)\{((?!(\#|\!)))(.*?)\}", data["value"])): newData["includes"]["inlineStyle"] = True
+        if(re.match(r"(.*?)\{((?!(\#|\!|\.)))(.*?)\}", data["value"])): newData["includes"]["inlineStyle"] = True
         else: newData["includes"]["inlineStyle"] = False
         # Showing whether the line contains class usage
         if(re.match(r"(.*?)\{\.(.*?)\}", data["value"])): newData["includes"]["classUsage"] = True
