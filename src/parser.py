@@ -65,6 +65,35 @@ def parseTypography(data):
     data = re.sub(f"\`([^\`]+)\`", codeTypography, data)
     return data
 
+# Parse heading
+def parseHeading(data):
+    newData = {"type": "heading", "headingLevel": 0}
+    # checking heading level
+    for char in data["value"]:
+        # Stop the loop when the character is not "#"
+        if(char != "#"): break
+        else: newData["headingLevel"] += 1
+    newData["value"] = data["value"][newData["headingLevel"] + 1:]
+    # Check if the heading includes heading id
+    if(data["includes"]["headingId"]):
+        newData["headingId"] = "";
+        for i in range(len(data["value"])):
+            # Check whether the heading contains "{#" and ends with "}"
+            if(data["value"][i] == "{" and data["value"][i + 1] == "#"):
+                # Temporary variable to remove heading id chars
+                newValue = newData["value"][: i- newData["headingLevel"] - 1]
+                for j in range(i + 2, len(data["value"])):
+                    if(data["value"][j] == "}"):
+                        newData["value"] = newValue + newData["value"][(j - newData["headingLevel"]):].strip()
+                        break
+                    else: newData["headingId"] += data["value"][j]
+        # Remove unecessary space from heading id
+        newData["headingId"] = newData["headingId"].strip()
+    else:
+        # Default Heading ID
+        newData["headingId"] = re.sub("[^a-zA-Z0-6-]", "", re.sub("<\/?[^>]+(>|$)", "", newData["value"])).lower()[:50]
+    return newData
+
 
 # Main Function
 def Parse(lexedData):
@@ -82,8 +111,37 @@ def Parse(lexedData):
             # Parse typography of the value except for link and image
             if not (data["includes"]["image"] and data["includes"]["link"]):
                 data["value"] = parseTypography(data["value"])
+            # Checking the type of each data
+            if(data["includes"]["heading"]):
+                newData = parseHeading(data)
+            # Plain text
+            else: paragraphValue.append(data)
+            # Push new data
+            paragraphValue.append(newData)
+        if(endParagraph or data["lastElement"]):
+            # Reset Variable to Default
+            endParagraph = False
+            # Push paragraph information to parsedData
+            parsedData.append(paragraphValue)
+            paragraphValue = []
+        
+    def toHTML(data):
+        htmlData = ""
+        for i in data:
+            if(i["type"] == "heading"):
+                if(i["headingId"]):
+                    htmlData += f"<h{i['headingLevel']} id='{i['headingId']}'>{i['value']}</h{i['headingLevel']}>"
+                else:
+                    htmlData += f"<h{i['headingLevel']}>{i['value']}</h{i['headingLevel']}>"
+        return htmlData
+    
+    parsedHtml = "";
 
-            print(data["value"])
+    for data in parsedData:
+        if(toHTML(data)): parsedHtml += toHTML(data)
+
+    print(parsedHtml)
+
     return parsedData
 
 sys.modules[__name__] = Parse
