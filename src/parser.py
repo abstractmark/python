@@ -19,6 +19,45 @@ def replaceSpecialCharacters(str):
     str = re.sub("\~", "&#126;", str)
     return str
 
+def parseClassUsage(data):
+    data["className"] = ""
+    for i in range(0, len(data["value"]) - 1):
+        # Check whether the value contains "{!" and ends with "}"
+        if(data["value"][i] == "{" and data["value"][i + 1] == "."):
+            # Temporary variable to remove class chars
+            newValue = data["value"][:i]
+            for j in range(i + 2, len(data["value"])):
+                if (data["value"][j] == "}"):
+                    data["value"] = newValue + data["value"][j + 1 :]
+                    data["value"] = data["value"].strip()
+                    data["className"] = data["className"].strip()
+                    return data
+                else: data["className"] += data["value"][j]
+    return data
+
+def parseInlineStyle(data):
+    data["inlineStyle"] = ""
+    for i in range(0, len(data["value"]) - 1):
+        # Check whether the value contains "{" and ends with "}" but it isn't heaidng id nor class
+        if(data["value"][i] == "{" and data["value"][i + 1] != "!" and data["value"] != "#"):
+            # Temporary variable to remove style chars
+            newValue = data["value"][:i]
+            for j in range(i + 1, len(data["value"])):
+                if(data["value"][j] == "}"):
+                    data["value"] = newValue + data["value"][j + 1 :].strip()
+                    data["value"] = data["value"].strip()
+                    return data
+                else: data["inlineStyle"] += data["value"][j]
+    return data
+
+
+# Add class attribute and style attribute to element
+def parseStyleAndClassAttribute(data):
+    result = ""
+    if("className" in data): result += f"class=\"{data['className']}\""
+    if("inlineStyle" in data): result += f" style=\"{data['inlineStyle']}\""
+    return result
+
 # Replace all escape characters to it's html entities
 def escapeCharacters(data):
     data = re.sub("\\\\\*", "&ast;", data)
@@ -89,7 +128,11 @@ def parseHeading(data):
                     else: newData["headingId"] += data["value"][j]
         # Remove unecessary space from heading id
         newData["headingId"] = newData["headingId"].strip()
+        if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+        if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
     else:
+        if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+        if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
         # Default Heading ID
         newData["headingId"] = re.sub("[^a-zA-Z0-6-]", "", re.sub("<\/?[^>]+(>|$)", "", newData["value"])).lower()[:50]
     return newData
@@ -130,9 +173,9 @@ def Parse(lexedData):
         for i in data:
             if(i["type"] == "heading"):
                 if(i["headingId"]):
-                    htmlData += f"<h{i['headingLevel']} id='{i['headingId']}'>{i['value']}</h{i['headingLevel']}>"
+                    htmlData += f"<h{i['headingLevel']} id='{i['headingId']}' {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
                 else:
-                    htmlData += f"<h{i['headingLevel']}>{i['value']}</h{i['headingLevel']}>"
+                    htmlData += f"<h{i['headingLevel']} {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
         return htmlData
     
     parsedHtml = "";
