@@ -54,7 +54,7 @@ def parseInlineStyle(data):
 # Add class attribute and style attribute to element
 def parseStyleAndClassAttribute(data):
     result = ""
-    if("className" in data): result += f"class=\"{data['className']}\""
+    if("className" in data): result += f" class=\"{data['className']}\""
     if("inlineStyle" in data): result += f" style=\"{data['inlineStyle']}\""
     return result
 
@@ -157,6 +157,14 @@ def Parse(lexedData):
             # Checking the type of each data
             if(data["includes"]["heading"]):
                 newData = parseHeading(data)
+            # Check if it is a plain text
+            includesValueList = list(data["includes"].values())
+            includesKeyList = list(data["includes"].keys())
+            if((True not in includesValueList) or (includesValueList.index(True) == includesKeyList.index("classUsage")) or (includesValueList.index(True) == includesKeyList.index("inlineStyle"))):
+                newData["type"] = "plain"
+                newData["value"] = data["value"]
+                if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+                if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
             # Plain text
             else: paragraphValue.append(data)
             # Push new data
@@ -171,11 +179,14 @@ def Parse(lexedData):
     def toHTML(data):
         htmlData = ""
         for i in data:
-            if(i["type"] == "heading"):
-                if(i["headingId"]):
-                    htmlData += f"<h{i['headingLevel']} id='{i['headingId']}' {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
-                else:
-                    htmlData += f"<h{i['headingLevel']} {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
+            if("type" in i):
+                if(i["type"] == "plain"):
+                    htmlData += f"<span{parseStyleAndClassAttribute(i)}>{i['value']}</span>"
+                elif(i["type"] == "heading"):
+                    if(i["headingId"]):
+                        htmlData += f"<h{i['headingLevel']} id='{i['headingId']}' {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
+                    else:
+                        htmlData += f"<h{i['headingLevel']} {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
         return htmlData
     
     parsedHtml = "";

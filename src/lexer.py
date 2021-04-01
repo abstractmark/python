@@ -6,11 +6,6 @@ def Lex(tokenizedData):
         newData = data.copy()
         # Showing what each line includes
         newData["includes"] = {};
-        if(re.match(r"(.*?)\{((?!(\#|\!|\.)))(.*?)\}", data["value"])): newData["includes"]["inlineStyle"] = True
-        else: newData["includes"]["inlineStyle"] = False
-        # Showing whether the line contains class usage
-        if(re.match(r"(.*?)\{\.(.*?)\}", data["value"])): newData["includes"]["classUsage"] = True
-        else: newData["includes"]["classUsage"] = False
         # Check whether the line contains heading ID
         if(re.match(r"(.*?)\{\#(.*?)\}", data["value"])): newData["includes"]["headingId"] = True
         else: newData["includes"]["headingId"] = False
@@ -51,9 +46,15 @@ def Lex(tokenizedData):
         # Check whether the line is including external javascript
         if(re.match(r"script\s*(=|:)", data["value"])): newData["includes"]["externalScript"] = True
         else: newData["includes"]["externalScript"] = False
-        # Check whethere the line is marquee tag
+        # Check whether the line is marquee tag
         if(re.match(r"(<~|~>)\s*(.*?)", data["value"])): newData["includes"]["marquee"] = True
         else: newData["includes"]["marquee"] = False
+        if(re.match(r"(.*?)\{((?!(\#|\!|\.)))(.*?)\}", data["value"])): newData["includes"]["inlineStyle"] = True
+        # Check whether the line contains inline style
+        else: newData["includes"]["inlineStyle"] = False
+        # Showing whether the line contains class usage
+        if(re.match(r"(.*?)\{\.(.*?)\}", data["value"])): newData["includes"]["classUsage"] = True
+        else: newData["includes"]["classUsage"] = False
         # Push the into array
         lexedData.append(newData)
 
