@@ -192,7 +192,26 @@ def Parse(lexedData):
     parsedHtml = "";
 
     for data in parsedData:
-        if(toHTML(data)): parsedHtml += toHTML(data)
+        # Check if the paragraph doesn't need <p> tags
+        needParagraphTag = False
+        for element in data:
+            if "type" in element:
+                if element["type"] == "heading":
+                    needParagraphTag = False
+                    break
+                # If it's HTML Element
+                elif (re.match(r"<\/?[a-z][\s\S]*>", element["value"])):
+                    needParagraphTag = False
+                # No need <p> tag if it's blockquote text
+                elif (element["type"] == "blockquote"):
+                    needParagraphTag = False
+                # No need <p> tag if there's no any plain text inside the paragraph
+                elif (element["type"] == "plain"):
+                    needParagraphTag = not(element["value"] == "<hr />" and len(data) == 1 or re.match(r"<(?!\/?(a|img|b|i|u|del|code)(?=>|\s.*>))\/?.*?>", element["value"]))
+
+        if(toHTML(data)):
+            if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
+            else: parsedHtml += toHTML(data)
 
     print(parsedHtml)
 
