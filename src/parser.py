@@ -1,6 +1,10 @@
 import sys
 import re
 
+# Function check a string contains a regular expression
+def isMatch(regex, string):
+    return bool(re.search(regex, string))
+
 # Replace all special characters in code with it's corresponding html entity
 def replaceSpecialCharacters(str):
     str = re.sub("&", "&amp;", str)
@@ -104,6 +108,46 @@ def parseTypography(data):
     data = re.sub(f"\`([^\`]+)\`", codeTypography, data)
     return data
 
+# A recursion functioin to parse all link syntax
+def parseLink(data):
+    newData = ""
+    text = ""
+    url = ""
+    continueLoopIndex = 0 # Variable to help changing iterator value
+    # Checking for the syntax of link
+    for i in range(len(data)):
+        i = continueLoopIndex
+        if i >= continueLoopIndex:
+            continueLoopIndex += 1
+        #if(continueLoopIndex != False and continueLoopIndex != i):
+            #continue
+        if(data[i] == "["):
+            # Finding the end of the text
+            for j in range(i + 1, len(data) - 1):
+                if(data[j] == "]" and data[j + 1] == "("):
+                    continueLoopIndex = j + 1
+                    break
+                else:
+                    text += data[j]
+        # Parsing the URL
+        elif(data[i] == "(" and data[i - 1] == "]"):
+            for j in range(i + 1, len(data)):
+                if(data[j] == ")"):
+                    newData += f"<a href = \"{url}\">{text}</a>"
+                    i = len(data)
+                    # Add others text into new data
+                    for k in range(j + 1, len(data)):
+                        newData += data[k]
+                    # Call this function again to parse all link
+                    while (isMatch(r"(?<!\!)\[.+\]\(.+\)", newData)):
+                        newData = parseLink(newData)
+                    return newData
+                else:
+                    url += data[j]
+        else:
+            newData += data[i]
+    return newData
+
 # Parse heading
 def parseHeading(data):
     newData = {"type": "heading", "headingLevel": 0}
@@ -130,9 +174,11 @@ def parseHeading(data):
         newData["headingId"] = newData["headingId"].strip()
         if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
         if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+        if(data["includes"]["link"]): newData["value"] = parseLink(newData["value"])
     else:
         if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
         if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+        if(data["includes"]["link"]): newData["value"] = parseLink(newData["value"])
         # Default Heading ID
         newData["headingId"] = re.sub("[^a-zA-Z0-6-]", "", re.sub("<\/?[^>]+(>|$)", "", newData["value"])).lower()[:50]
     return newData
@@ -155,16 +201,19 @@ def Parse(lexedData):
             if not (data["includes"]["image"] and data["includes"]["link"]):
                 data["value"] = parseTypography(data["value"])
             # Checking the type of each data
+            includesValueList = list(data["includes"].values())
+            includesKeyList = list(data["includes"].keys())
             if(data["includes"]["heading"]):
                 newData = parseHeading(data)
             # Check if it is a plain text
-            includesValueList = list(data["includes"].values())
-            includesKeyList = list(data["includes"].keys())
-            if((True not in includesValueList) or (includesValueList.index(True) == includesKeyList.index("classUsage")) or (includesValueList.index(True) == includesKeyList.index("inlineStyle"))):
+            elif((True not in includesValueList) or (includesValueList.index(True) == includesKeyList.index("classUsage")) or (includesValueList.index(True) == includesKeyList.index("inlineStyle")) or includesValueList.index(True) == includesKeyList.index("link") ):
                 newData["type"] = "plain"
                 newData["value"] = data["value"]
                 if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
                 if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+                if(data["includes"]["link"]): newData["value"] = parseLink(newData["value"])
+                # Parse typography once again (important for line which contains link)
+                newData["value"] = parseTypography(newData["value"])
             # Plain text
             else: paragraphValue.append(data)
             # Push new data
