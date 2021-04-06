@@ -227,15 +227,20 @@ def Parse(lexedData):
         
     def toHTML(data):
         htmlData = ""
-        for i in data:
-            if("type" in i):
-                if(i["type"] == "plain"):
-                    htmlData += f"<span{parseStyleAndClassAttribute(i)}>{i['value']}</span>"
-                elif(i["type"] == "heading"):
-                    if(i["headingId"]):
-                        htmlData += f"<h{i['headingLevel']} id='{i['headingId']}' {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
+        for i in range(len(data)):
+            if("type" in data[i]):
+                if(data[i]["type"] == "plain"):
+                    # Add br tag if there is next line and the current line is not horizontal rule inside the paragraph
+                    newLine = i + 1 < len(data) and not bool(re.search(r"<(?!\/?(a|img|b|i|u|del|code)(?=>|\s.*>))\/?.*?>", data[i + 1]["value"])) and data[i + 1]["type"] == "plain" and data[i]["value"] != "<hr />"
+                    if "className" in data[i] or "inlineStyle" in data[i]:
+                        htmlData += f"<span{parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</span>{'<br />' if newLine else ''}"
                     else:
-                        htmlData += f"<h{i['headingLevel']} {parseStyleAndClassAttribute(i)}>{i['value']}</h{i['headingLevel']}>"
+                        htmlData += f"{data[i]['value']}{'<br />' if newLine else ''}"
+                elif(data[i]["type"] == "heading"):
+                    if(data[i]["headingId"]):
+                        htmlData += f"<h{data[i]['headingLevel']} id='{data[i]['headingId']}' {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
+                    else:
+                        htmlData += f"<h{data[i]['headingLevel']} {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
         return htmlData
     
     parsedHtml = "";
