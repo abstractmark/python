@@ -205,6 +205,15 @@ def Parse(lexedData):
             includesKeyList = list(data["includes"].keys())
             if(data["includes"]["heading"]):
                 newData = parseHeading(data)
+            
+            if(data["includes"]["taskList"]):
+                newData["type"] = "taskList";
+                newData["checked"] = data["value"][3] == "x" or data["value"][3] == "X"
+                newData["value"] = data["value"][5:].strip()
+                if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+                if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+                if(data["includes"]["link"]): newData["value"] = parseLink(newData["value"])
+
             # Check if it is a plain text
             elif((True not in includesValueList) or (includesValueList.index(True) == includesKeyList.index("classUsage")) or (includesValueList.index(True) == includesKeyList.index("inlineStyle")) or includesValueList.index(True) == includesKeyList.index("link") ):
                 newData["type"] = "plain"
@@ -241,6 +250,8 @@ def Parse(lexedData):
                         htmlData += f"<h{data[i]['headingLevel']} id='{data[i]['headingId']}' {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
                     else:
                         htmlData += f"<h{data[i]['headingLevel']} {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
+                elif(data[i]["type"] == "taskList"):
+                    htmlData += f"<div{parseStyleAndClassAttribute(data[i])}><input type='checkbox' id='{i}' {'checked' if data[i]['checked'] else ''} onclick='return false;' /><label for='{i}'>{data[i]['value']}</label></div>"
         return htmlData
     
     parsedHtml = "";
