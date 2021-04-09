@@ -119,8 +119,7 @@ def parseLink(data):
         i = continueLoopIndex
         if i >= continueLoopIndex:
             continueLoopIndex += 1
-        #if(continueLoopIndex != False and continueLoopIndex != i):
-            #continue
+        
         if(data[i] == "["):
             # Finding the end of the text
             for j in range(i + 1, len(data) - 1):
@@ -183,6 +182,30 @@ def parseHeading(data):
         newData["headingId"] = re.sub("[^a-zA-Z0-6-]", "", re.sub("<\/?[^>]+(>|$)", "", newData["value"])).lower()[:50]
     return newData
 
+def parseImage(data):
+    newData = {"type": "image", "value": data["value"], "altText": "", "imageSrc": ""}
+    if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+    if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+    continueLoopIndex = 0 # Variable to help changing iterator value
+    for i in range(0, len(newData["value"]) - 1):
+        i = continueLoopIndex
+        if i >= continueLoopIndex:
+            continueLoopIndex += 1
+        # Check whether if it is started with ![
+        if newData["value"][i] == "!" and newData["value"][i + 1] == "[":
+            for j in range(i + 2, len(newData["value"])):
+                # Break the loop if it is ended with ]
+                if newData["value"][j] == "]":
+                    continueLoopIndex = j + 1
+                    break
+                else: newData["altText"] += newData["value"][j] #Otherwise, save it as Alt text
+        elif(newData["value"][i] == "("):
+            for j in range(i + 1, len(newData["value"])):
+                if(newData["value"][j] == ")"):
+                    return newData
+                else: newData["imageSrc"] += newData["value"][j] # Get image source
+
+    return newData
 
 # Main Function
 def Parse(lexedData):
@@ -203,10 +226,15 @@ def Parse(lexedData):
             # Checking the type of each data
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
-            if(data["includes"]["heading"]):
+            if(data["includes"]["image"]):
+                # Calling parseImage function
+                newData = parseImage(data)
+
+            elif(data["includes"]["heading"]):
+                # Calling parseHeading Function
                 newData = parseHeading(data)
             
-            if(data["includes"]["taskList"]):
+            elif(data["includes"]["taskList"]):
                 newData["type"] = "taskList";
                 newData["checked"] = data["value"][3] == "x" or data["value"][3] == "X"
                 newData["value"] = data["value"][5:].strip()
@@ -252,6 +280,8 @@ def Parse(lexedData):
                         htmlData += f"<h{data[i]['headingLevel']} {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
                 elif(data[i]["type"] == "taskList"):
                     htmlData += f"<div{parseStyleAndClassAttribute(data[i])}><input type='checkbox' id='{i}' {'checked' if data[i]['checked'] else ''} onclick='return false;' /><label for='{i}'>{data[i]['value']}</label></div>"
+                elif(data[i]["type"] == "image"):
+                    htmlData += f"<img src={data[i]['imageSrc'] if data[i]['imageSrc'] else ''} alt={data[i]['altText'] if data[i]['altText'] else ''}{parseStyleAndClassAttribute(data[i])} />"
         return htmlData
     
     parsedHtml = "";
