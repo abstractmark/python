@@ -3,7 +3,9 @@ import sys
 import src.tokenizer
 import src.lexer
 import src.parser
+import src.DEFAULT_STYLE
 import webbrowser
+import re
 
 HELP_TEXT = """
 Usage:
@@ -24,6 +26,24 @@ Abstractmark converting options:
  -unstyled ............... Convert to only HTML tags without any style on it.
 """
 
+def CONVERT_STYLE_TAGS(styles):
+    styletags = ""
+    for style in styles:
+        styletags += f"<style>{style}</style>"
+    return styletags
+
+def CONVERT_TO_FULL_HTML(data):
+    return re.sub("(\r\n|\n|\r)", "", 
+f"""\<!DOCTYPE html>\
+<html lang="en">\
+<head>\
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\
+{CONVERT_STYLE_TAGS(data["styles"])}\
+</head>\
+<body>${data["body"]}</body>\
+</html>\
+""")
+
 args = sys.argv
 if len(args) >= 2:
     if(args[1].startswith('-')):
@@ -42,9 +62,10 @@ if len(args) >= 2:
             if(arg == "-t" or arg == "--tags"): fullHTMLTags = False
             elif(arg == "-unstyled" or arg == "--unstyled"): styled = False
             if(not arg.startswith('-')): htmlFileName = f"{'.'.join(arg.split('.')[:-1])}.html"
-        
+        if styled:
+            parsedData["styles"].append(src.DEFAULT_STYLE)
         with open(htmlFileName, 'w') as f:
-            f.write(parsedData["html"])
+            f.write(CONVERT_TO_FULL_HTML(parsedData) if fullHTMLTags else parsedData["body"])
         if "-open" in args:
             webbrowser.open(f"file://{os.path.realpath(htmlFileName)}")
 else:

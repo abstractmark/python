@@ -308,6 +308,6 @@ def Parse(lexedData):
             if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
             else: parsedHtml += toHTML(data)
 
-    return {"html": parsedHtml}
+    return {"body": parsedHtml, "styles": []}
 
 sys.modules[__name__] = Parse
