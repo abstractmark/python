@@ -207,6 +207,19 @@ def parseImage(data):
 
     return newData
 
+def parseMarquee(data):
+    newData = {"type": "marquee", "value": data["value"][2:].strip()}
+    # Parse class and inline style
+    if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+    if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+    # CHeck the marquee direction
+    direction = "right" if data["value"][0:2] == "~>" else "left"
+    newData["value"] = f"<div class='marquee' data-direction='{direction}'><div class='marquee-content'{parseStyleAndClassAttribute(newData)}>{newData['value']}</div></div>"
+
+    if("inlineStyle" in newData): del newData["inlineStyle"]
+    if("className" in newData): del newData["className"]
+    return newData
+
 # Main Function
 def Parse(lexedData):
     parsedData = []
@@ -226,6 +239,10 @@ def Parse(lexedData):
             # Checking the type of each data
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
+            if(data["includes"]["marquee"]):
+                # Calling parseMarquee function
+                newData = parseMarquee(data)
+
             if(data["includes"]["image"]):
                 # Calling parseImage function
                 newData = parseImage(data)
@@ -266,9 +283,12 @@ def Parse(lexedData):
         htmlData = ""
         for i in range(len(data)):
             if("type" in data[i]):
-                if(data[i]["type"] == "plain"):
+                if(data[i]["type"] == "plain" or data[i]["type"] == "marquee"):
                     # Add br tag if there is next line and the current line is not horizontal rule inside the paragraph
-                    newLine = i + 1 < len(data) and not bool(re.search(r"<(?!\/?(a|img|b|i|u|del|code)(?=>|\s.*>))\/?.*?>", data[i + 1]["value"])) and data[i + 1]["type"] == "plain" and data[i]["value"] != "<hr />"
+                    if(i + 1 < len(data) and "type" in data[i + 1]):
+                        newLine = i + 1 < len(data) and not bool(re.search(r"<(?!\/?(a|img|b|i|u|del|code)(?=>|\s.*>))\/?.*?>", data[i + 1]["value"])) and data[i + 1]["type"] == "plain" and data[i]["value"] != "<hr />"
+                    else:
+                        newLine = False
                     if "className" in data[i] or "inlineStyle" in data[i]:
                         htmlData += f"<span{parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</span>{'<br />' if newLine else ''}"
                     else:

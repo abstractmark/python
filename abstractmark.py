@@ -4,6 +4,7 @@ import src.tokenizer
 import src.lexer
 import src.parser
 import src.DEFAULT_STYLE
+import src.MARQUEE_STYLE
 import webbrowser
 import re
 
@@ -34,13 +35,13 @@ def CONVERT_STYLE_TAGS(styles):
 
 def CONVERT_TO_FULL_HTML(data):
     return re.sub("(\r\n|\n|\r)", "", 
-f"""\<!DOCTYPE html>\
+f"""<!DOCTYPE html>\
 <html lang="en">\
 <head>\
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\
 {CONVERT_STYLE_TAGS(data["styles"])}\
 </head>\
-<body>${data["body"]}</body>\
+<body>{data["body"]}</body>\
 </html>\
 """)
 
@@ -54,6 +55,7 @@ if len(args) >= 2:
         tokenizedData = src.tokenizer(f.read())
         lexedData = src.lexer(tokenizedData)
         parsedData = src.parser(lexedData)
+        parsedData["styles"].append(src.MARQUEE_STYLE) # Add marquee style css
         # Check CLI args
         styled = True
         fullHTMLTags = True
