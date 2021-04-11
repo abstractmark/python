@@ -33,6 +33,12 @@ def CONVERT_STYLE_TAGS(styles):
         styletags += f"<style>{style}</style>"
     return styletags
 
+def CONVERT_STYLESHEET(stylesheets):
+    stylesheetTags = ""
+    for stylesheet in stylesheets:
+        stylesheetTags += f"<link rel='stylesheet' href='{stylesheet}'>"
+    return stylesheetTags
+
 def CONVERT_TO_FULL_HTML(data):
     return re.sub("(\r\n|\n|\r)", "", 
 f"""<!DOCTYPE html>\
@@ -40,6 +46,7 @@ f"""<!DOCTYPE html>\
 <head>\
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">\
 {CONVERT_STYLE_TAGS(data["styles"])}\
+{CONVERT_STYLESHEET(data["stylesheets"])}\
 </head>\
 <body>{data["body"]}</body>\
 </html>\

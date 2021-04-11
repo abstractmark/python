@@ -226,6 +226,7 @@ def Parse(lexedData):
     # Assign paragraph variable
     endParagraph = False
     paragraphValue = []
+    stylesheets = []
     # First, split lexed data by paragraph
     for data in lexedData:
         if(data["value"] == "" and endParagraph): endParagraph = False
@@ -239,11 +240,15 @@ def Parse(lexedData):
             # Checking the type of each data
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
-            if(data["includes"]["marquee"]):
+            if(data["includes"]["stylesheet"]):
+                newData["type"] = "stylesheet"
+                newData["value"] = re.compile('(https?.\/\/[^\s]+)').findall(data["value"])[0]
+
+            elif(data["includes"]["marquee"]):
                 # Calling parseMarquee function
                 newData = parseMarquee(data)
 
-            if(data["includes"]["image"]):
+            elif(data["includes"]["image"]):
                 # Calling parseImage function
                 newData = parseImage(data)
 
@@ -302,6 +307,8 @@ def Parse(lexedData):
                     htmlData += f"<div{parseStyleAndClassAttribute(data[i])}><input type='checkbox' id='{i}' {'checked' if data[i]['checked'] else ''} onclick='return false;' /><label for='{i}'>{data[i]['value']}</label></div>"
                 elif(data[i]["type"] == "image"):
                     htmlData += f"<img src={data[i]['imageSrc'] if data[i]['imageSrc'] else ''} alt={data[i]['altText'] if data[i]['altText'] else ''}{parseStyleAndClassAttribute(data[i])} />"
+                elif(data[i]["type"] == "stylesheet"):
+                    if(data[i]["value"] not in stylesheets): stylesheets.append(data[i]["value"])
         return htmlData
     
     parsedHtml = "";
@@ -328,6 +335,6 @@ def Parse(lexedData):
             if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
             else: parsedHtml += toHTML(data)
 
-    return {"body": parsedHtml, "styles": []}
+    return {"body": parsedHtml, "styles": [], "stylesheets": stylesheets}
 
 sys.modules[__name__] = Parse
