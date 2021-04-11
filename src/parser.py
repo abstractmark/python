@@ -226,7 +226,6 @@ def Parse(lexedData):
     # Assign paragraph variable
     endParagraph = False
     paragraphValue = []
-    stylesheets = []
     # First, split lexed data by paragraph
     for data in lexedData:
         if(data["value"] == "" and endParagraph): endParagraph = False
@@ -240,8 +239,13 @@ def Parse(lexedData):
             # Checking the type of each data
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
+
             if(data["includes"]["stylesheet"]):
                 newData["type"] = "stylesheet"
+                newData["value"] = re.compile('(https?.\/\/[^\s]+)').findall(data["value"])[0]
+            
+            elif(data["includes"]["externalScript"]):
+                newData["type"] = "scripts"
                 newData["value"] = re.compile('(https?.\/\/[^\s]+)').findall(data["value"])[0]
 
             elif(data["includes"]["marquee"]):
@@ -283,6 +287,9 @@ def Parse(lexedData):
             # Push paragraph information to parsedData
             parsedData.append(paragraphValue)
             paragraphValue = []
+    
+    stylesheets = []
+    scripts = []
         
     def toHTML(data):
         htmlData = ""
@@ -309,6 +316,8 @@ def Parse(lexedData):
                     htmlData += f"<img src={data[i]['imageSrc'] if data[i]['imageSrc'] else ''} alt={data[i]['altText'] if data[i]['altText'] else ''}{parseStyleAndClassAttribute(data[i])} />"
                 elif(data[i]["type"] == "stylesheet"):
                     if(data[i]["value"] not in stylesheets): stylesheets.append(data[i]["value"])
+                elif(data[i]["type"] == "scripts"):
+                    if(data[i]["value"] not in scripts): scripts.append(data[i]["value"])
         return htmlData
     
     parsedHtml = "";
@@ -335,6 +344,6 @@ def Parse(lexedData):
             if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
             else: parsedHtml += toHTML(data)
 
-    return {"body": parsedHtml, "styles": [], "stylesheets": stylesheets}
+    return {"body": parsedHtml, "styles": [], "stylesheets": stylesheets, "scripts": scripts}
 
 sys.modules[__name__] = Parse
