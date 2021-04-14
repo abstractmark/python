@@ -227,7 +227,11 @@ def Parse(lexedData):
     endParagraph = False
     paragraphValue = []
     # First, split lexed data by paragraph
-    for data in lexedData:
+    continueLoopIndex = 0 # Variable to help changing iterator value
+    for index in range(len(lexedData)):
+        if continueLoopIndex > 0 and index < continueLoopIndex:
+            continue
+        data = lexedData[index]
         if(data["value"] == "" and endParagraph): endParagraph = False
         elif (data["value"] == "" and not endParagraph): endParagraph = True
         else:
@@ -240,7 +244,19 @@ def Parse(lexedData):
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
 
-            if(data["includes"]["stylesheet"]):
+            if(data["includes"]["defineClass"]):
+                newData["type"] = "defineClass"
+                newData["value"] = ""
+                # Find the close tag of define class
+                for i in range(index + 1, len(lexedData)):
+                    if(lexedData[i]["value"] == "---"):
+                        continueLoopIndex = i + 1
+                        # Check if define class close tag is also end of the file
+                        if(lexedData[i]["lastElement"]): endParagraph = True
+                        break
+                    else: newData["value"] += lexedData[i]["value"]
+
+            elif(data["includes"]["stylesheet"]):
                 newData["type"] = "stylesheet"
                 newData["value"] = re.compile('(https?.\/\/[^\s]+)').findall(data["value"])[0]
             
@@ -294,6 +310,7 @@ def Parse(lexedData):
     
     stylesheets = []
     scripts = []
+    parsedStyleTags = []
         
     def toHTML(data):
         htmlData = ""
@@ -314,6 +331,8 @@ def Parse(lexedData):
                         htmlData += f"<h{data[i]['headingLevel']} id='{data[i]['headingId']}' {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
                     else:
                         htmlData += f"<h{data[i]['headingLevel']} {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
+                elif(data[i]["type"] == "defineClass"):
+                    if(data[i]["value"] not in parsedStyleTags): parsedStyleTags.append(data[i]["value"])
                 elif(data[i]["type"] == "taskList"):
                     htmlData += f"<div{parseStyleAndClassAttribute(data[i])}><input type='checkbox' id='{i}' {'checked' if data[i]['checked'] else ''} onclick='return false;' /><label for='{i}'>{data[i]['value']}</label></div>"
                 elif(data[i]["type"] == "image"):
@@ -348,6 +367,6 @@ def Parse(lexedData):
             if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
             else: parsedHtml += toHTML(data)
 
-    return {"body": parsedHtml, "styles": [], "stylesheets": stylesheets, "scripts": scripts}
+    return {"body": parsedHtml, "styles": parsedStyleTags, "stylesheets": stylesheets, "scripts": scripts}
 
 sys.modules[__name__] = Parse
