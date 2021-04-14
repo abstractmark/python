@@ -248,6 +248,10 @@ def Parse(lexedData):
                 newData["type"] = "scripts"
                 newData["value"] = re.compile('(https?.\/\/[^\s]+)').findall(data["value"])[0]
 
+            elif(data["includes"]["horizontalRule"]):
+                newData["type"] = "plain"
+                newData["value"] = "<hr />"
+
             elif(data["includes"]["marquee"]):
                 # Calling parseMarquee function
                 newData = parseMarquee(data)
