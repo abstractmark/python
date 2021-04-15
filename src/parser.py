@@ -244,7 +244,22 @@ def Parse(lexedData):
             includesValueList = list(data["includes"].values())
             includesKeyList = list(data["includes"].keys())
 
-            if(data["includes"]["defineClass"]):
+            if(data["includes"]["fencedCodeBlock"]):
+                newData["type"] = "fencedCodeBlock"
+                newData["value"]= data["value"]
+                if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
+                if(data["includes"]["inlineStyle"]): newData = parseInlineStyle(newData)
+                newData["value"] = ""
+                for j in range(index + 1, len(lexedData)):
+                    # Check if the line is a fenced code block close tag
+                    if(lexedData[j]["includes"]["fencedCodeBlock"]):
+                        continueLoopIndex = j + 1
+                        # Check if fenced code block close tag is also the end of the file
+                        if(lexedData[j]["lastElement"]): endParagraph = True
+                        break
+                    else: newData["value"] += f"{replaceSpecialCharacters(lexedData[j]['value'])}<br />" # Add a <br> tag in the end of each line
+
+            elif(data["includes"]["defineClass"]):
                 newData["type"] = "defineClass"
                 newData["value"] = ""
                 # Find the close tag of define class
@@ -331,6 +346,9 @@ def Parse(lexedData):
                         htmlData += f"<h{data[i]['headingLevel']} id='{data[i]['headingId']}' {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
                     else:
                         htmlData += f"<h{data[i]['headingLevel']} {parseStyleAndClassAttribute(data[i])}>{data[i]['value']}</h{data[i]['headingLevel']}>"
+                elif(data[i]["type"] == "fencedCodeBlock"):
+                    # Insert fenced code block value inside <code> and <pre> tags
+                    htmlData += f"<pre{parseStyleAndClassAttribute(data)}><code>{data[i]['value']}</code></pre>"
                 elif(data[i]["type"] == "defineClass"):
                     if(data[i]["value"] not in parsedStyleTags): parsedStyleTags.append(data[i]["value"])
                 elif(data[i]["type"] == "taskList"):
