@@ -205,6 +205,7 @@ def parseImage(data):
                     return newData
                 else: newData["imageSrc"] += newData["value"][j] # Get image source
 
+
     return newData
 
 def parseMarquee(data):
@@ -219,6 +220,87 @@ def parseMarquee(data):
     if("inlineStyle" in newData): del newData["inlineStyle"]
     if("className" in newData): del newData["className"]
     return newData
+
+def parseTable(lexedData, index):
+    newData = {"type": "table", "value": {"head": [], "body": []}}
+    breakIndex = None
+    def parseTableRow(row):
+        tableRowValue = []
+        # Checking the table syntax
+        if(row[0] != "|"): return None
+        else:
+            tableDataValue = ""
+            for i in range(len(row)):
+                if(i == len(row) - 1 and row[i] != "|"):
+                    tableDataValue += row[i]
+                    # Parse class usage and inline style
+                    classUsage = parseClassUsage({"value": tableDataValue})
+                    inlineStyle = parseInlineStyle({"value": classUsage.value})
+                    # Check if className and inlineStyle is not empty string
+                    if(classUsage.className): newData["className"] = classUsage["className"]
+                    if(inlineStyle["inlineStyle"]): newData["inlineStyle"] = inlineStyle["inlineStyle"]
+                elif(row[i] == "|"):
+                    # Pusing table data value to table row value array if it's not an empty string table data value
+                    value = escapeCharacters(tableDataValue.strip())
+                    # Parse the value if it's an image
+                    if(isMatch(r'!\[[^\]]*\]\((.*?)\s*(\"(?:.*[^"])")?\s*\)', value)):
+                        newValue = {"altText": "", "imageSrc": ""}
+                        continueLoopIndex = 0
+                        for j in range(len(value)):
+                            if continueLoopIndex > 0 and index < continueLoopIndex:
+                                continue
+                            if(value[j] == "|" and value[j + 1] == "["):
+                                for k in range(j + 2, len(value)):
+                                    # Break the loop if it is ended with ]
+                                    if(value[k] == "]"):
+                                        continueLoopIndex = k
+                                        break
+                                    else: newValue["altText"] += value[k] # Otherwise save it as Alt text
+                            elif(value[j] == "("):
+                                for k in range(j + 1, len(value)):
+                                    if(value[j] == ")"):
+                                        break
+                                    else: newValue["imageSrc"] += value[k]
+                        value = f"<img src='{newValue['imageSrc']}' alt='{newValue['altText']}' />"
+                    else: value = parseLink(parseTypography(value))
+                    if(tableDataValue): tableRowValue.append(value)
+                    tableDataValue = ""
+                else: tableDataValue += row[i]
+        return tableRowValue
+    for i in range(index, len(lexedData)):
+        if(not lexedData[i]["includes"]["table"]):
+            breakIndex = i
+            break
+        else:
+            if(i == index):
+                newData["value"]["head"] = parseTableRow(lexedData[i]["value"])
+            else:
+                # Function to check if it isa heading syntax (===== OR -----)
+                def checkHeadingSyntax(data):
+                    for j in range(len(data)):
+                        for k in range(len(data[j])):
+                            if(data[j][k] != "-" and data[j][k] != "="):
+                                return False
+                    return True
+                # If it's not heading syntax, then push it to tbody
+                if(not checkHeadingSyntax(parseTableRow(lexedData[i]["value"]))):
+                    newData["value"]["body"].append(parseTableRow(lexedData[i]["value"]))
+    # Merge all to html tags
+    def mergeTableRow(tr, isHeading):
+        trValue = "<tr>"
+        for td in tr:
+            trValue += f"<td>{td}</td>" if not isHeading else f"<th>{td}</th>"
+        return trValue + "</tr>"
+    result = f"<table{parseStyleAndClassAttribute(newData)}><thead>{mergeTableRow(newData['value']['head'], True)}</thead><tbody>"
+    for tr in newData["value"]["body"]:
+        result += mergeTableRow(tr, False)
+    result = f"{result}</tbody></table>"
+    newData["value"] = result
+    # Delete inline style and class name ket from newData to not to be parsed twice
+    if("inlineStyle" in newData): del newData["inlineStyle"]
+    if("className" in newData): del newData["className"]
+    if(not breakIndex): breakIndex = len(lexedData) - 1
+    return {"data": newData, "breakIndex": breakIndex, "endParagraph": breakIndex == len(lexedData) - 1}
 
 # Main Function
 def Parse(lexedData):
@@ -282,6 +364,14 @@ def Parse(lexedData):
             elif(data["includes"]["horizontalRule"]):
                 newData["type"] = "plain"
                 newData["value"] = "<hr />"
+                
+            elif(data["includes"]["table"]):
+                newData = parseTable(lexedData, index);
+                # Checking if it's the end of paragraph /file
+                endParagraph = newData["endParagraph"]
+                # Skip to non-table element
+                continueLoopIndex = newData["breakIndex"]
+                newData = newData["data"])
 
             elif(data["includes"]["marquee"]):
                 # Calling parseMarquee function
@@ -326,6 +416,7 @@ def Parse(lexedData):
     stylesheets = []
     scripts = []
     parsedStyleTags = []
+    usedTable = []
         
     def toHTML(data):
         htmlData = ""
@@ -359,6 +450,8 @@ def Parse(lexedData):
                     if(data[i]["value"] not in stylesheets): stylesheets.append(data[i]["value"])
                 elif(data[i]["type"] == "scripts"):
                     if(data[i]["value"] not in scripts): scripts.append(data[i]["value"])
+                elif(data[i]["type"] == "table"):
+                    htmlData += data[i]["value"]
         return htmlData
     
     parsedHtml = "";
@@ -380,10 +473,10 @@ def Parse(lexedData):
                 # No need <p> tag if there's no any plain text inside the paragraph
                 elif (element["type"] == "plain"):
                     needParagraphTag = not(element["value"] == "<hr />" and len(data) == 1 or re.match(r"<(?!\/?(a|img|b|i|u|del|code)(?=>|\s.*>))\/?.*?>", element["value"]))
-
-        if(toHTML(data)):
-            if(needParagraphTag): parsedHtml += f"<p>{toHTML(data)}</p>"
-            else: parsedHtml += toHTML(data)
+        result = toHTML(data)
+        if(result):
+            if(needParagraphTag): parsedHtml += f"<p>{result}</p>"
+            else: parsedHtml += result
 
     return {"body": parsedHtml, "styles": parsedStyleTags, "stylesheets": stylesheets, "scripts": scripts}
 
