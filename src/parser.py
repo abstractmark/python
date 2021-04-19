@@ -182,6 +182,53 @@ def parseHeading(data):
         newData["headingId"] = re.sub("[^a-zA-Z0-6-]", "", re.sub("<\/?[^>]+(>|$)", "", newData["value"])).lower()[:50]
     return newData
 
+def parseBlockquote(lexedData, index):
+    # Index usedto skip element until the index
+    breakIndex = None
+    newData = {"type": "blockquote", "value": []}
+    # Check if it's followed by blockquote
+    for i in range(index, len(lexedData)):
+        # End the loop if it's not followed by blockquote
+        if(not lexedData[i]["includes"]["blockquote"]):
+            index = i
+            breakIndex = i
+            break
+        else:
+            blockquoteDepthLevel = 0
+            trimmedValue = ""
+            # Check blockqupte's depth level and remove blockquote syntax from blockquote value
+            for j in range(len(lexedData[i]["value"])):
+                # Check blockquote's syntax
+                if(lexedData[i]["value"][j] == ">"): blockquoteDepthLevel += 1
+                else:
+                    trimmedValue = lexedData[i]["value"][blockquoteDepthLevel:].strip()
+                    break
+            blockquoteData = {"value": trimmedValue, "blockquoteDepthLevel": blockquoteDepthLevel}
+            # Get style and class information about the blockquote
+            if(lexedData[i]["includes"]["classUsage"]): blockquoteData = parseClassUsage(blockquoteData)
+            if(lexedData[i]["includes"]["inlineStyle"]): blockquoteData = parseInlineStyle(blockquoteData)
+            if(lexedData[i]["includes"]["link"]): blockquoteData["value"] = parseLink(blockquoteData["value"])
+            # Push the data
+            newData["value"].append(blockquoteData)
+
+    # A recursive function to parse blockquoteand its children into html tags
+    def parseDescendants(parent, data, index):
+        result = ""
+        for i in range(index, len(data["value"])):
+            # Break when meets a blockquote with the same depth level and its index is higher than parent index
+            if(parent == data["value"][i]["blockquoteDepthLevel"] and i != index): break
+            # If the blockquote depth level is the same as parent depth level + 1
+            if(parent + 1 == data["value"][i]["blockquoteDepthLevel"]):
+                # If it's not an empty string
+                result += f"<blockquote{parseStyleAndClassAttribute(data['value'][i])}>{parseTypography(data['value'][i]['value'])}{parseDescendants(parent + 1, data, i)}</blockquote>" if bool(len(parseDescendants(parent + 1, data, i))) else f"<blockquote{parseStyleAndClassAttribute(data['value'][i])}>{parseTypography(data['value'][i]['value'])}</blockquote>"
+        return result
+    
+    newData['value'] = parseDescendants(0, newData, 0)
+    if(not breakIndex): breakIndex = len(lexedData) - 1
+    else: breakIndex -= 1
+    return {'data': newData, 'breakIndex': breakIndex, 'endParagraph': breakIndex == len(lexedData) - 1}
+            
+
 def parseImage(data):
     newData = {"type": "image", "value": data["value"], "altText": "", "imageSrc": ""}
     if(data["includes"]["classUsage"]): newData = parseClassUsage(newData)
@@ -364,6 +411,14 @@ def Parse(lexedData):
             elif(data["includes"]["horizontalRule"]):
                 newData["type"] = "plain"
                 newData["value"] = "<hr />"
+
+            elif(data["includes"]["blockquote"]):
+                newData = parseBlockquote(lexedData, index)
+                # Checking if it's the end of paragraph / file
+                endParagraph = newData["endParagraph"]
+                # Skip to non-table element
+                continueLoopIndex = newData["breakIndex"]
+                newData = newData["data"]
                 
             elif(data["includes"]["table"]):
                 newData = parseTable(lexedData, index);
@@ -371,7 +426,7 @@ def Parse(lexedData):
                 endParagraph = newData["endParagraph"]
                 # Skip to non-table element
                 continueLoopIndex = newData["breakIndex"]
-                newData = newData["data"])
+                newData = newData["data"]
 
             elif(data["includes"]["marquee"]):
                 # Calling parseMarquee function
@@ -450,7 +505,7 @@ def Parse(lexedData):
                     if(data[i]["value"] not in stylesheets): stylesheets.append(data[i]["value"])
                 elif(data[i]["type"] == "scripts"):
                     if(data[i]["value"] not in scripts): scripts.append(data[i]["value"])
-                elif(data[i]["type"] == "table"):
+                elif(data[i]["type"] == "table" or data[i]['type'] == "blockquote"):
                     htmlData += data[i]["value"]
         return htmlData
     
