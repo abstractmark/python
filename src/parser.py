@@ -376,7 +376,9 @@ def parseUnorderedList(lexedData, index):
 
                 if(data[i]["includes"]["orderedList"]):
                     if(needListTag): 
-                        if result != "<ul>": listDescendantData += result + "</ul>"
+                        if result != "<ul>": 
+                            listDescendantData += result
+                            listDescendantData += "</ul>"
                         else: listDescendantData = ""
                     # Get new data with new indentation level
                     newData = []
@@ -532,7 +534,9 @@ def parseOrderedList(lexedData, index):
                 
                 if(data[i]["includes"]["unorderedList"]):
                     if(needListTag): 
-                        if result != "<ol>": listDescendantData += result + "</ol>"
+                        if result != "<ol>":
+                            listDescendantData += result
+                            listDescendantData += "</ol>"
                         else: listDescendantData = ""
                     # Get new data with new indentation level
                     newData = []
@@ -588,7 +592,7 @@ def parseOrderedList(lexedData, index):
             if(isOrderedListDescendant):
                 listDescendantData += "</ol>"
                 isOrderedListDescendant = False
-        result = listDescendantData if not needListTag else result + "</ul>"
+        result = listDescendantData if not needListTag else result + "</ol>"
         return result
     parentIndex = newData["value"][0]["totalTabs"] - 1
     newData["value"] = mergeDescendants(parseDescendants(newData["value"], 0, parentIndex))
