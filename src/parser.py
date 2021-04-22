@@ -373,7 +373,177 @@ def parseUnorderedList(lexedData, index):
                 
                 if(data[i]["includes"]["marquee"]):
                     value = parseMarquee(data[i])["value"]
+
+                if(data[i]["includes"]["orderedList"]):
+                    if(needListTag): 
+                        if result != "<ul>": listDescendantData += result + "</ul>"
+                        else: listDescendantData = ""
+                    # Get new data with new indentation level
+                    newData = []
+                    for j in range(len(data)):
+                        if(not data[i]["includes"]["orderedList"]): break
+                        else: newData.append({**data[j], "totalTabs": data[j]["totalTabs"] - data[i]["totalTabs"]})
+                    needListTag = False
+                    newData = parseOrderedList(newData, i)
+                    skipIndex = newData["breakIndex"]
+                    listDescendantData += newData["data"]["value"]
                 
+                if(data[i]["includes"]['heading']):
+                    headingData = parseHeading(data[i])
+                    if(headingData["headingId"]):
+                        value = f"<h{headingData['headingLevel']} id='{headingData['headingId']}' {parseStyleAndClassAttribute(headingData)}>{headingData['value']}</h{headingData['headingLevel']}>"
+                    else:
+                        value = f"<h{headingData['headingLevel']}{parseStyleAndClassAttribute(headingData)}>{headingData['value']}</h{headingData['headingLevel']}>"
+                if(data[i]["includes"]["taskList"]):
+                    className = parseClassUsage({"value": value})
+                    value = className["value"]
+                    className = className["className"]
+                    inlineStyle = parseInlineStyle({"value": value})
+                    value = inlineStyle["value"]
+                    inlineStyle = inlineStyle["inlineStyle"]
+                    styleAndClassAttr = (f"style=\"{inlineStyle}\"" if inlineStyle else "") + (f"class=\"{className}\"" if className else "")
+                    value = f"<div {styleAndClassAttr}><input type='checkbox' id='{i}' {'checked' if value[3] == 'x' or value[3] == 'X' else ''} onclick='return false;'><label for='{i}'>{value[5:]}</label></div>"
+
+                value = parseTypography(value)
+                value = escapeCharacters(value)
+                value = parseLink(value)
+                if(data[i]["includes"]["image"]):
+                    imageData = parseImage(data[i])
+                    imageDataAttr = f"{imageData['imageSrc'] if 'imageSrc' in imageData else ''} {imageData['altText'] if 'altText' in 'altText' in imageData else ''}"
+                    value = f"<img {imageDataAttr} {parseStyleAndClassAttribute(data)} />"
+                
+                # Checking class usage
+                className = parseClassUsage({"value": value})
+                value = className["value"]
+                className = className["className"]
+                # Checking inline style
+                inlineStyle = parseInlineStyle({"value": value})
+                value = inlineStyle['value']
+                inlineStyle = inlineStyle["inlineStyle"]
+                # Add the <p> tag into result and calling this function again
+                if(value):
+                    styleAndClassAttr = (f"style=\"{inlineStyle}\"" if inlineStyle else "") + (f"class=\"{className}\"" if className else "")
+                    result += f"<p {styleAndClassAttr}>{value}</p>"
+            
+            if("descendants" in data[i]): 
+                if not isUnorderedListDescendant: result += mergeDescendants(data[i]["descendants"])
+                else: listDescendantData += mergeDescendants(data[i]["descendants"])
+            if(isUnorderedListDescendant):
+                listDescendantData += "</ul>"
+                isUnorderedListDescendant = False
+        result = listDescendantData if not needListTag else result + "</ul>"
+        return result
+    parentIndex = newData["value"][0]["totalTabs"] - 1
+    newData["value"] = mergeDescendants(parseDescendants(newData["value"], 0, parentIndex))
+    # Check if the list ends in the same line as the file latest line
+    if(not breakIndex): breakIndex = len(lexedData) - 1
+    return {"data": newData, "breakIndex": breakIndex, "endParagraph": breakIndex == len(lexedData) - 1}
+
+def parseOrderedList(lexedData, index):
+    newData = {"type": "orderedList", "value": []}
+    breakIndex = None
+    lexedData = syncCodeIndentation(lexedData)
+    # Getting all unordered list children
+    for i in range(index, len(lexedData)):
+        if(not lexedData[i]["includes"]["orderedList"] and (not lexedData[i]["hasTab"] or (newData["value"][0] and lexedData[i]["totalTabs"] <= newData["value"][0]["totalTabs"]))):
+            index = i;
+            breakIndex = i
+            break
+        else: newData["value"].append(lexedData[i])
+
+
+    def parseDescendants(data, index, parentTabs):
+        result = []
+        for i in range(index, len(data)):
+            # Break the loop if it meets same-level unorderded list
+            if(data[i]["totalTabs"] == parentTabs and i != index): break
+            # Checking if an unordered list is descendant of the unordered list
+            if(data[i]["totalTabs"] == parentTabs + 1):
+                # Checking if it's returning not-empty array
+                if(len(parseDescendants(data, i, data[i]["totalTabs"]))):
+                    dataCopy = {**data[i], "descendants": parseDescendants(data, i, data[i]["totalTabs"])}
+                    result.append(dataCopy)
+                else: result.append(data[i])
+        return result
+    
+    # A recursive function to merge descendants parsed from parseDescendants function
+    def mergeDescendants(data):
+        result = "<ol>"
+        needListTag = True # Check if text in list descendant need this unordered list tag (no need when the descendant is list too)
+        listDescendantData = "" # Only used if needListTag is true
+        isOrderedListDescendant = False # Check if it's in the same <ul> tag
+        skipIndex = 0
+        for i in range(len(data)):
+            if(skipIndex > 0 and i <= skipIndex): continue
+            # If the line is a new list
+            if(data[i]["includes"]["orderedList"]):
+                # Remove the list styntax and returning it's value
+                value = data[i]["value"][2:]
+                value = parseTypography(value)
+                value = escapeCharacters(value)
+                value = parseLink(value)
+                # Checking class usage 
+                className = parseClassUsage({"value": value})
+                value = className["value"]
+                className = className["className"]
+                # Checking inline style
+                inlineStyle = parseInlineStyle({"value": value})
+                value = inlineStyle["value"]
+                inlineStyle = inlineStyle["inlineStyle"]
+                if(data[i]["includes"]["image"]):
+                    imageData = parseImage(data[i])
+                    imageDataAttr = f"{imageData['imageSrc'] if 'imageSrc' in imageData else ''} {imageData['altText'] if 'altText' in 'altText' in imageData else ''}"
+                    value += f"<img {imageDataAttr} {parseStyleAndClassAttribute(data)} />"
+                # Add the <li> tag into result and calling this function again
+                styleAndClassAttr = (f"style=\"{inlineStyle}\"" if inlineStyle else "") + (f"class=\"{className}\"" if className else "")
+                if(needListTag): result += f"<li {styleAndClassAttr}>{value}</li>"
+                else:
+                    isOrderedListDescendant = True
+                    listDescendantData += "<ul>"
+                    styleAndClassAttr = (f"style=\"{inlineStyle}\"" if inlineStyle else "") + (f"class=\"{className}\"" if className else "")
+                    listDescendantData += f"<li {styleAndClassAttr}>{value}</li>"
+            else:
+                value = data[i]["value"]
+                # Parse all syntax inside the list
+                if(data[i]["includes"]["horizontalRule"]): value = "<hr />"
+                if(data[i]["includes"]["fencedCodeBlock"]):
+                    if(data[i]["includes"]["classUsage"]): data[i] = parseClassUsage({**data[i], "value": value})
+                    if(data[i]["includes"]["inlineStyle"]): data[i] = parseInlineStyle(data[i])
+                    value = f"<pre {parseStyleAndClassAttribute(data[i])}><code>"
+                    for j in range(i + 1, len(data)):
+                        # Check if the line is a fenced code block close tag
+                        if(data[j]["includes"]["fencedCodeBlock"]):
+                            value += "</code></pre>"
+                            skipIndex = j + 1
+                            break
+                        else: value += f"{replaceSpecialCharacters(data[j]['value'])}<br />" # Add a <br> tag in the end of each line
+                if(data[i]["includes"]["blockquote"]):
+                    value = parseBlockquote(data, i)
+                    skipIndex = value["breakIndex"]
+                    value = value["data"]["value"]
+
+                if(data[i]["includes"]["table"]):
+                    value = parseTable(data, i)
+                    skipIndex = value["breakIndex"]
+                    value = value["data"]["value"]
+                
+                if(data[i]["includes"]["marquee"]):
+                    value = parseMarquee(data[i])["value"]
+                
+                if(data[i]["includes"]["unorderedList"]):
+                    if(needListTag): 
+                        if result != "<ol>": listDescendantData += result + "</ol>"
+                        else: listDescendantData = ""
+                    # Get new data with new indentation level
+                    newData = []
+                    for j in range(len(data)):
+                        if(not data[i]["includes"]["unorderedList"]): break
+                        else: newData.append({**data[j], "totalTabs": data[j]["totalTabs"] - data[i]["totalTabs"]})
+                    needListTag = False
+                    newData = parseUnorderedList(newData, i)
+                    skipIndex = newData["breakIndex"]
+                    listDescendantData += newData["data"]["value"]
+
                 if(data[i]["includes"]['heading']):
                     headingData = parseHeading(data[i])
                     if(headingData["headingId"]):
@@ -413,11 +583,11 @@ def parseUnorderedList(lexedData, index):
                 print(result)
             
             if("descendants" in data[i]): 
-                if not isUnorderedListDescendant: result += mergeDescendants(data[i]["descendants"])
+                if not isOrderedListDescendant: result += mergeDescendants(data[i]["descendants"])
                 else: listDescendantData += mergeDescendants(data[i]["descendants"])
-            if(isUnorderedListDescendant):
-                listDescendantData += "</ul>"
-                isUnorderedListDescendant = False
+            if(isOrderedListDescendant):
+                listDescendantData += "</ol>"
+                isOrderedListDescendant = False
         result = listDescendantData if not needListTag else result + "</ul>"
         return result
     parentIndex = newData["value"][0]["totalTabs"] - 1
@@ -578,6 +748,14 @@ def Parse(lexedData):
                 # Skip to non-table element
                 continueLoopIndex = newData["breakIndex"]
                 newData = newData["data"]
+
+            elif(data["includes"]["orderedList"]):
+                newData = parseOrderedList(lexedData, index)
+                # Checking if it's the end of paragraph / file
+                endParagraph = newData["endParagraph"]
+                # Skip to non-table element
+                continueLoopIndex = newData["breakIndex"]
+                newData = newData["data"]
             
             elif(data["includes"]["blockquote"]):
                 newData = parseBlockquote(lexedData, index)
@@ -672,7 +850,7 @@ def Parse(lexedData):
                     if(data[i]["value"] not in stylesheets): stylesheets.append(data[i]["value"])
                 elif(data[i]["type"] == "scripts"):
                     if(data[i]["value"] not in scripts): scripts.append(data[i]["value"])
-                elif(data[i]["type"] == "table" or data[i]['type'] == "blockquote" or data[i]['type'] == "unorderedList"):
+                elif(data[i]["type"] == "table" or data[i]['type'] == "blockquote" or data[i]['type'] == "unorderedList" or data[i]['type'] == 'orderedList'):
                     htmlData += data[i]["value"]
         return htmlData
     

@@ -1,0 +1,58 @@
+---define
+.test{
+background-color: red;
+}
+---
+stylesheet = https://cdn.jsdelivr.net/npm/@fire-ui/fire-ui@0.2.6/FireUI.min.css
+script = https://cdn.jsdelivr.net/npm/@fire-ui/fire-ui@0.2.6/FireUI.min.js
+# Hello World {color:red}{.test}
+
+test{.test}{color:red}
+test
+hello
+
+test [link](https://kimlimjustin.github.io)[test](https://google.com)
+
+---define
+.test{
+    color: black
+}
+---
+- [x] Hello World
+- [X] test
+- [ ] test
+
+![test](test){margin:auto}{.test}
+
+```
+<script>alert("Hello")</script>
+```
+
+~> Test
+<~ Hello
+
+---define
+.test{
+    margin: 20px;
+}
+---
+
+| test | test |
+| ===== | ===== |
+| hello | hi |
+
+> test
+>> test
+>>> test
+>>> test
+>> test
+>>> test
+>> test
+> test
+
+1. test
+    - test
+        1. hi
+    - test
+1. hello
+    1. test
