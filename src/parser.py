@@ -584,7 +584,6 @@ def parseOrderedList(lexedData, index):
                 if(value):
                     styleAndClassAttr = (f"style=\"{inlineStyle}\"" if inlineStyle else "") + (f"class=\"{className}\"" if className else "")
                     result += f"<p {styleAndClassAttr}>{value}</p>"
-                print(result)
             
             if("descendants" in data[i]): 
                 if not isOrderedListDescendant: result += mergeDescendants(data[i]["descendants"])

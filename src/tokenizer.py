@@ -1,5 +1,5 @@
 import sys
-from fractions import gcd
+from math import gcd
 from functools import reduce
 
 def Tokenize(abstractmark):
