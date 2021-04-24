@@ -81,7 +81,7 @@ if len(args) >= 2:
         if styled:
             parsedData["styles"].append(src.DEFAULT_STYLE)
         with open(htmlFileName, 'w') as f:
-            f.write(CONVERT_TO_FULL_HTML(parsedData) if fullHTMLTags else parsedData["body"])
+            f.write(CONVERT_TO_FULL_HTML(parsedData) if fullHTMLTags else parsedData["body"] if not styled else CONVERT_STYLE_TAGS(parsedData["styles"]) +  parsedData["body"] )
         if "-open" in args:
             webbrowser.open(f"file://{os.path.realpath(htmlFileName)}")
 else:
