@@ -84,5 +84,21 @@ if len(args) >= 2:
             f.write(CONVERT_TO_FULL_HTML(parsedData) if fullHTMLTags else parsedData["body"] if not styled else CONVERT_STYLE_TAGS(parsedData["styles"]) +  parsedData["body"] )
         if "-open" in args:
             webbrowser.open(f"file://{os.path.realpath(htmlFileName)}")
-else:
+elif(args[0] == "abstractmark.py"):
     print("\nUsage: abstractmark [abstractmark file] [abstractmark options] [args]\n\nSee \"abstractmark --help\" for more.\n")
+
+
+class AbstractMark:
+    def __init__(self, source, styled = True, fullHTMLTags = True):
+        self.source = source
+        self.styled = styled
+        self.fullHTMLTags = fullHTMLTags
+    
+    def convert(self):
+        tokenizedData = src.tokenizer(self.source)
+        lexedData = src.lexer(tokenizedData)
+        parsedData = src.parser(lexedData)
+        parsedData["styles"].append(src.MARQUEE_STYLE) # Add marquee style css
+        if(self.styled):
+            parsedData["styles"].append(src.DEFAULT_STYLE)
+        return CONVERT_TO_FULL_HTML(parsedData) if self.fullHTMLTags else parsedData["body"] if not self.styled else CONVERT_STYLE_TAGS(parsedData["styles"]) +  parsedData["body"]

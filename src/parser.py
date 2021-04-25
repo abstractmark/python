@@ -690,7 +690,7 @@ def Parse(lexedData):
     # First, split lexed data by paragraph
     continueLoopIndex = 0 # Variable to help changing iterator value
     for index in range(len(lexedData)):
-        if(continueLoopIndex > 0 and index < continueLoopIndex) or (index == len(lexedData) -1 and not endParagraph):
+        if(continueLoopIndex > 0 and index < continueLoopIndex):
             continue
         data = lexedData[index]
         if(data["value"] == "" and endParagraph): endParagraph = False
